@@ -4,6 +4,7 @@ initial_state = {
     "task": "Analyze the dataset and recommend complete preprocessing and EDA.",
     "dataset_path": "data/Titanic.csv",   
     "dataset_summary": {},
+    "analysis": {},
     "plan": [],
     "result": "",
     "success": False,

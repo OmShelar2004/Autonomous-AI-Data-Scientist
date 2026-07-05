@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.graph import END
-from tools import read_csv_tool
 from state import State
 from models import Plan, Review
 from prompts import (
@@ -9,6 +8,12 @@ from prompts import (
     EXECUTOR_PROMPT,
     REVIEWER_PROMPT,
 )
+from tools.loader import read_csv
+from tools.missing_values import get_missing_values
+from tools.duplicates import get_duplicate_info
+from tools.statistics import get_statistics
+from tools.feature_types import get_feature_types
+
 
 load_dotenv()
 
@@ -30,7 +35,7 @@ reviewer = llm.with_structured_output(Review)
 
 def dataset_loader_node(state: State):
     print("\n Loading dataset.....")
-    summary = read_csv_tool(state["dataset_path"])
+    summary = read_csv(state["dataset_path"])
     state["dataset_summary"] = summary
 
     print("\nDataset Loaded Successfully!\n")
