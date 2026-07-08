@@ -8,6 +8,8 @@ from state import State
 def analysis_agent(state: State):
     df = read_csv(state["dataset_path"])
 
+    state["df"] = df    
+
     missing = get_missing_values(df)
 
     duplicates = get_duplicate_info(df)

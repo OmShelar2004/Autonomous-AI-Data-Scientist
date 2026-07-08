@@ -52,7 +52,8 @@ def planner_node(state: State):
     response = planner.invoke(
         PLANNER_PROMPT.format(
             task=state["task"],
-            dataset_summary=state["dataset_summary"]
+            dataset_summary=state["dataset_summary"],
+            analysis=state["analysis"]
         )
     )
 
@@ -77,7 +78,9 @@ def executor_node(state: State):
 
         response = llm.invoke(
             EXECUTOR_PROMPT.format(
+                task=state["task"],
                 dataset_summary=state["dataset_summary"],
+                analysis=state["analysis"],
                 previous_result=previous_result,
                 feedback=state["feedback"],
                 step=step
@@ -103,6 +106,8 @@ def reviewer_node(state: State):
     response = reviewer.invoke(
         REVIEWER_PROMPT.format(
             task=state["task"],
+            dataset_summary=state["dataset_summary"],
+            analysis=state["analysis"],
             plan=state["plan"],
             result=state["result"]
         )
@@ -115,7 +120,6 @@ def reviewer_node(state: State):
     print("Feedback:", state["feedback"])
 
     return state
-
 
 # ----------------------------
 # Router

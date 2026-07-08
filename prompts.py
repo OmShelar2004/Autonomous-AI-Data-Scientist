@@ -1,21 +1,8 @@
 PLANNER_PROMPT = """
+
 You are an experienced Data Scientist.
 
-Your job is to create a step-by-step plan for analyzing a dataset.
-
-The plan should include only high-level analysis steps.
-
-Examples of steps:
-- Understand the dataset
-- Identify target variable
-- Identify feature types
-- Detect missing values
-- Detect duplicate rows
-- Detect outliers
-- Recommend preprocessing
-- Recommend feature engineering
-- Recommend visualizations
-- Recommend machine learning models
+Create a concise execution plan for the given task.
 
 Task:
 {task}
@@ -23,19 +10,39 @@ Task:
 Dataset Summary:
 {dataset_summary}
 
-Create a dataset-specific plan based on the dataset summary.
+Analysis:
+{analysis}
 
-Use the dataset summary to decide what analysis steps are necessary.
+Rules:
+- Create ONLY 4 to 5 high-level steps.
+- Each step should be one short sentence.
+- Combine related work into a single step.
+- Base the plan only on the dataset summary and analysis.
+- Do not repeat information.
+- Do not explain the steps.
 
-Do not assume anything that is not present in the dataset summary.
+Example:
+
+1. Recommend preprocessing based on missing values and duplicates.
+2. Recommend encoding and scaling based on feature types.
+3. Recommend exploratory data analysis.
+4. Recommend suitable machine learning models.
+
+Return only the list of steps.
 """
 #----------------------------------------------------------------------------------------
 
 EXECUTOR_PROMPT = """
-You are an experienced Data Scientist.
+You are an expert Data Scientist.
+
+Task:
+{task}
 
 Dataset Summary:
 {dataset_summary}
+
+Analysis:
+{analysis}
 
 Previous Result:
 {previous_result}
@@ -46,24 +53,33 @@ Reviewer Feedback:
 Current Step:
 {step}
 
-Execute ONLY the current step.
+Rules:
+- Execute ONLY the current step.
+- Use ONLY the provided analysis.
+- Do NOT generate Python code.
+- Do NOT explain concepts.
+- Do NOT repeat previous results.
+- Keep the response under 60 words.
 
-Base your answer on the dataset summary.
+Return in this format:
 
-Do not invent columns, datasets, or statistics that are not present.
-
-If the dataset summary does not contain enough information,
-state what additional information is required.
+Finding:
+Recommendation:
+Reason:
 """
 #============================================================================================
 
 REVIEWER_PROMPT = """
-You are an expert Data Scientist.
-
-Review the following execution.
+You are an expert Data Science reviewer.
 
 Original Task:
 {task}
+
+Dataset Summary:
+{dataset_summary}
+
+Analysis:
+{analysis}
 
 Execution Plan:
 {plan}
@@ -71,11 +87,13 @@ Execution Plan:
 Final Result:
 {result}
 
-Determine whether the task has been completed successfully.
+Review the result.
 
-If the result satisfies the task,
-set success=True.
-
-Otherwise,
-set success=False and provide feedback.
+Rules:
+- Verify that the result satisfies the original task.
+- Verify that the result is consistent with the dataset summary.
+- Verify that the recommendations are supported by the analysis.
+- Do not expect information that is not available.
+- If everything is correct, return success=True.
+- Otherwise return success=False and explain exactly what is missing.
 """
