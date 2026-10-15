@@ -1,136 +1,49 @@
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+"""LangGraph nodes orchestrating deterministic Python execution tools."""
+
 from langgraph.graph import END
+
 from state import State
-from models import Plan, Review
-from prompts import (
-    PLANNER_PROMPT,
-    EXECUTOR_PROMPT,
-    REVIEWER_PROMPT,
-)
 from tools.loader import read_csv
-from tools.missing_values import get_missing_values
-from tools.duplicates import get_duplicate_info
-from tools.statistics import get_statistics
-from tools.feature_types import get_feature_types
+from tools.model_comparison import compare_models
+from tools.model_training import train_candidates
 
-
-load_dotenv()
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0
-)
-
-planner = llm.with_structured_output(Plan)
-reviewer = llm.with_structured_output(Review)
-
-
-
-
-
-#-----------------------------
-#Dataet Loader Node
-#-----------------------------
 
 def dataset_loader_node(state: State):
-    print("\n Loading dataset.....")
-    summary = read_csv(state["dataset_path"])
-    state["dataset_summary"] = summary
-
-    print("\nDataset Loaded Successfully!\n")
-    print(summary)
-
+    state["df"] = read_csv(state["dataset_path"])
     return state
 
 
-# ----------------------------
-# Planner Node
-# ----------------------------
 def planner_node(state: State):
-
-    response = planner.invoke(
-        PLANNER_PROMPT.format(
-            task=state["task"],
-            dataset_summary=state["dataset_summary"],
-            analysis=state["analysis"]
-        )
-    )
-
-    state["plan"] = response.steps
-
+    if not state.get("target_column"):
+        state["plan"] = ["Ask the user to select a target column."]
+        return state
+    state["plan"] = [
+        "Apply leakage-safe feature engineering and preprocessing.",
+        "Train lightweight candidate models on a held-out validation split.",
+        "Rank actual validation metrics and present two models for user selection.",
+    ]
     return state
 
 
-# ----------------------------
-# Executor Node
-# ----------------------------
 def executor_node(state: State):
-
-    state["retry_count"] += 1
-
-    results = []
-    previous_result = ""
-
-    for step in state["plan"]:
-
-        print(f"\nExecuting: {step}")
-
-        response = llm.invoke(
-            EXECUTOR_PROMPT.format(
-                task=state["task"],
-                dataset_summary=state["dataset_summary"],
-                analysis=state["analysis"],
-                previous_result=previous_result,
-                feedback=state["feedback"],
-                step=step
-            )
-        )
-
-        print(response.content)
-
-        results.append(response.content)
-
-        previous_result = response.content
-
-    state["result"] = "\n\n".join(results)
-
+    if not state.get("target_column"):
+        state["result"] = "Target selection is required before training."
+        return state
+    training = train_candidates(state["df"], state["target_column"], state["problem_type"])
+    table, top_models = compare_models(training["results"], state["problem_type"])
+    state["processed_data"] = training
+    state["model_results"] = table.to_dict(orient="records")
+    state["top_models"] = top_models
+    state["result"] = table.to_string(index=False)
     return state
 
 
-# ----------------------------
-# Reviewer Node
-# ----------------------------
 def reviewer_node(state: State):
-
-    response = reviewer.invoke(
-        REVIEWER_PROMPT.format(
-            task=state["task"],
-            dataset_summary=state["dataset_summary"],
-            analysis=state["analysis"],
-            plan=state["plan"],
-            result=state["result"]
-        )
-    )
-
-    state["success"] = response.success
-    state["feedback"] = response.feedback
-
-    print("\nReviewer:", state["success"])
-    print("Feedback:", state["feedback"])
-
+    state["retry_count"] = state.get("retry_count", 0) + 1
+    state["success"] = bool(state.get("top_models"))
+    state["feedback"] = "Real validation metrics are available." if state["success"] else "A target column must be selected before execution."
     return state
 
-# ----------------------------
-# Router
-# ----------------------------
+
 def router(state: State):
-
-    if state["success"]:
-        return END
-
-    if state["retry_count"] >= 3:
-        print("Maximum retry attempts reached.")
-        return END
-
-    return "executor"
+    return END

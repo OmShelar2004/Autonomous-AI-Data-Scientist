@@ -1,244 +1,63 @@
-# 🤖 Autonomous AI Data Scientist
+# AI Data Scientist
 
-An autonomous AI system capable of performing Data Science tasks using **LangGraph**, **LangChain**, **Groq LLM**, and **Python**.
+Dataset-agnostic CSV execution layer built around the existing LangGraph workflow.
+Python performs profiling, preprocessing, training, validation, model ranking, model
+persistence, and prediction; the orchestration layer never invents numerical results.
 
-Instead of relying on a single prompt, this project is being developed as a **multi-agent system** where specialized AI agents collaborate with Python tools to analyze datasets, perform preprocessing, generate EDA reports, recommend machine learning models, and eventually train models autonomously.
-
----
-
-## 🎯 Vision
-
-The long-term goal is to build an AI that can take **any CSV or Excel dataset** and automatically:
-
-- 📂 Understand the dataset
-- 🧹 Perform data preprocessing
-- 📊 Generate Exploratory Data Analysis (EDA)
-- 📈 Create visualizations
-- 🧠 Recommend Machine Learning models
-- ⚙️ Train and evaluate models
-- 📝 Explain every decision like an experienced Data Scientist
-
-The philosophy behind this project is:
-
-> **Don't make the LLM smarter. Make the tools smarter.**
-
-Python performs the computations, while the LLM focuses on reasoning and explanation.
-
----
-
-# 🚀 Current Features
-
-- ✅ Multi-Agent Architecture
-- ✅ Planner Agent
-- ✅ Executor Agent
-- ✅ Reviewer Agent
-- ✅ Router with Retry Logic
-- ✅ Dataset Loader
-- ✅ CSV Reading Tool
-- ✅ Structured Outputs using Pydantic
-- ✅ Modular Project Architecture
-
----
-
-# 🏗 Project Architecture
-
-```
-                User
-                  │
-                  ▼
-         Dataset Loader
-                  │
-                  ▼
-              Planner
-                  │
-                  ▼
-             Executor
-                  │
-                  ▼
-             Reviewer
-                  │
-          ┌───────┴────────┐
-          │                │
-      Success          Needs Retry
-          │                │
-          ▼                │
-         END ◄─────────────┘
-```
-
----
-
-# 📂 Project Structure
-
-```
-AI_DATA_SCIENTIST/
-
-│
-├── data/
-│   └── Titanic.csv
-│
-├── docs/
-│   └── Development Journal
-│
-├── agents.py
-├── graph.py
-├── main.py
-├── models.py
-├── prompts.py
-├── state.py
-├── tools.py
-│
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
-
----
-
-# 🛠 Tech Stack
-
-- Python
-- LangGraph
-- LangChain
-- Groq
-- Pandas
-- Pydantic
-- python-dotenv
-
----
-
-# ⚙️ Installation
-
-Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/Autonomous-AI-Data-Scientist.git
-
-cd Autonomous-AI-Data-Scientist
-```
-
-Install dependencies
+## Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Create a `.env` file
+## Train from a CSV
 
-```env
-GROQ_API_KEY=YOUR_API_KEY
-```
+## Simple web interface
 
-Run the project
+Run the browser interface after installing the dependencies:
 
 ```bash
-python main.py
+streamlit run app.py
 ```
 
----
+It guides the user through CSV upload, target selection, real model evaluation, choosing
+one of the two recommendations, downloading the trained `.joblib` model, and prediction
+from either a new CSV or an editable single row.
 
-# 📊 Development Progress
+## Command-line interface
 
-## ✅ Version 0.1
+Specify a target when it is known:
 
-- Planner
-- Executor
-- Reviewer
-- Router
-- Retry Mechanism
-- Dataset Loader
-- CSV Reader
-- Dataset Summary
+```bash
+python main.py path/to/data.csv --target target_column
+```
 
----
+If target detection is not confident, the CLI lists the CSV columns and asks you to
+choose one. It reports genuine held-out validation metrics, presents the two best
+models, and only saves a model after you select option 1 or 2.
 
-# 🗺 Roadmap
+For non-interactive execution:
 
-## Version 0.2
-- Specialized Analysis Tools
-- Missing Value Detection
-- Duplicate Detection
-- Statistical Summary
-- Outlier Detection
+```bash
+python main.py path/to/data.csv --target target_column --select 1 --model-path models/my_model.joblib
+```
 
----
+## Predict
 
-## Version 0.3
-- Automated EDA
-- Histograms
-- Boxplots
-- Correlation Heatmaps
-- Feature Distribution
+```bash
+python main.py --model models/my_model.joblib --predict-csv path/to/new_rows.csv
+python main.py --model models/my_model.joblib --row-json '{"feature_a": 12, "feature_b": "blue"}'
+```
 
----
+The saved artifact includes date feature engineering, the fitted preprocessing pipeline,
+the selected estimator, and (for classification) class-label decoding.
 
-## Version 0.4
-- Automated Data Preprocessing
-- Missing Value Imputation
-- Encoding
-- Scaling
-- Outlier Handling
+## Execution flow
 
----
+```
+dataset_loader -> analysis -> planner -> executor -> reviewer
+```
 
-## Version 0.5
-- Machine Learning Advisor
-- Model Recommendation
-- Feature Selection
-- Metric Recommendation
-
----
-
-## Version 0.6
-- Automatic Model Training
-- Hyperparameter Tuning
-- Model Comparison
-
----
-
-## Version 1.0
-
-An Autonomous AI Data Scientist capable of:
-
-- Reading any dataset
-- Performing preprocessing
-- Generating EDA
-- Creating visualizations
-- Recommending ML models
-- Training models
-- Explaining every decision
-- Working with minimal human intervention
-
----
-
-# 📖 What I Learned During This Project
-
-This repository documents my journey of learning:
-
-- Agentic AI
-- LangGraph
-- Multi-Agent Systems
-- Prompt Engineering
-- Tool Calling
-- Data Science Automation
-- Software Architecture
-- AI System Design
-
-The project is intentionally built incrementally so every version represents a meaningful engineering milestone.
-
----
-
-# 🤝 Contributing
-
-This project is currently a personal long-term learning and engineering project. Suggestions, issues, and discussions are always welcome.
-
----
-
-# ⭐ Future Goal
-
-The ultimate objective is to build an AI system that performs the complete workflow of a junior Data Scientist while explaining every decision transparently.
-
----
-
-## 📜 License
-
-This project is released under the MIT License.
+The executor runs median/mode imputation, one-hot encoding, numeric scaling, safe
+datetime components, lightweight candidate training, and metric-based ranking. XGBoost
+is used when installed; otherwise the remaining baseline models are still evaluated.
