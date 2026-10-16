@@ -30,6 +30,45 @@ def metrics_table(rows: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows).rename(columns={"model_name": "Model"})
 
 
+def confidence_flag(confidence: float) -> str:
+    """Convert a classification confidence score into a simple user-facing flag."""
+    if confidence >= 0.80:
+        return "🟢 High confidence"
+    if confidence >= 0.60:
+        return "🟡 Moderate confidence"
+    return "🔴 Low confidence"
+
+
+def show_single_prediction(result: dict, target_column: str) -> None:
+    """Present one prediction as a concise, non-technical result."""
+    st.subheader("Prediction result")
+    prediction = result["prediction"]
+    probabilities = result.get("probabilities")
+
+    if probabilities:
+        confidence = float(probabilities.get(str(prediction), max(probabilities.values())))
+        first, second = st.columns(2)
+        first.metric(f"Predicted {target_column}", str(prediction))
+        second.metric("Prediction confidence", f"{confidence:.1%}")
+        st.info(f"{confidence_flag(confidence)} — based on the model's confidence in this classification.")
+    else:
+        st.metric(f"Predicted {target_column}", f"{float(prediction):,.4f}")
+
+
+def prediction_table(predictions: list[dict], target_column: str) -> pd.DataFrame:
+    """Flatten batch results into readable predicted values and confidence flags."""
+    rows = []
+    for prediction in predictions:
+        row = {f"Predicted {target_column}": prediction["prediction"]}
+        probabilities = prediction.get("probabilities", {})
+        if probabilities:
+            confidence = float(probabilities.get(str(prediction["prediction"]), max(probabilities.values())))
+            row["Confidence flag"] = confidence_flag(confidence)
+            row["Confidence"] = f"{confidence:.1%}"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 uploaded = st.file_uploader("1. Upload a CSV dataset", type="csv")
 if uploaded is None:
     st.info("Start by uploading a tabular CSV file.")
@@ -139,7 +178,10 @@ if prediction_csv is not None:
         new_rows = pd.read_csv(prediction_csv)
         if st.button("Predict uploaded rows"):
             predictions = predict_rows(st.session_state.bundle, new_rows)
-            st.dataframe(pd.DataFrame(predictions), use_container_width=True)
+            st.success(f"Predictions completed for {len(predictions):,} row(s).")
+            st.dataframe(
+                prediction_table(predictions, target), hide_index=True, use_container_width=True
+            )
     except Exception as error:
         st.error(f"Prediction failed: {error}")
 
@@ -149,6 +191,6 @@ row = st.data_editor(example, num_rows="fixed", use_container_width=True, key="s
 if st.button("Predict this row"):
     try:
         result = predict_rows(st.session_state.bundle, row)
-        st.json(result[0])
+        show_single_prediction(result[0], target)
     except Exception as error:
         st.error(f"Prediction failed: {error}")
